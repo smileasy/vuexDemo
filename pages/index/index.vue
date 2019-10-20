@@ -1,28 +1,41 @@
 <template>
 	<view class="content">
 		<view class="text-area">
-			<text class="title">{{count}}</text>
+			<block v-for="item in homeGoodsList " :key='item.goodsId'>
+				<view>
+					<text class="title">{{item.goodsId}}</text>
+					<text class="title">{{item.goodsName}}</text>
+					<text class="title">{{item.goodsPrice}}</text>
+				</view>
+			</block>
 		</view>
 		<view class="text-area">
-			<text class="title">{{name}}</text>
+			<text class="title">{{myName}}</text>
 		</view>
 		<view class="text-area">
-			<text class="title">{{count1}}</text>
+			<text class="title">{{myCount}}</text>
 		</view>
 		<view class="text-area">
-			<text class="title">{{name1}}</text>
+			<text class="title">{{nameDesc}}</text>
 		</view>
 		<view class="text-area">
-			<text class="title">{{homeCount}}</text>
+			<text class="title">{{countPower}}</text>
 		</view>
+		<view class="text-area">
+			<text class="title">{{homeInfo}}</text>
+		</view>
+		<view class="text-area">
+			<text class="title">{{editHomeCount(1000)}}</text>
+		</view>
+
 		<!-- ***************************************** -->
-		<view class="text-area-user" >
+		<view class="text-area-user">
 			<text class="title">{{userName}}</text>
 		</view>
 		<view class="text-area-user">
 			<text class="title">{{userAge}}</text>
 		</view>
-		<view class="text-area-user" >
+		<view class="text-area-user">
 			<text class="title">{{userName1}}</text>
 		</view>
 		<view class="text-area-user">
@@ -32,6 +45,10 @@
 			<view>
 				<button type="primary" @click="add(1000)">增加</button>
 				<button type="primary" @click="min(2000)">减小</button>
+				<button type="primary" @click="addMoreGoods">增加一个商品</button>
+				<button type="primary" @click="asyncAddMoreGoods">异步增加一个商品</button>
+				<button type="primary" @click="asyncCallback">异步callback增加商品回调</button>
+				<button type="primary" @click="asyncPromise">异步promise增加商品回调</button>
 				<button type="warn" @click="gotoUser">跳转</button>
 				<button type="warn" @click="changeName">改变名字</button>
 				<button type="warn" @click="changeAge">改变年龄</button>
@@ -62,21 +79,23 @@
 		},
 		computed: {
 			homeCount() {
-				//带有命名空间的获取
 				return this.$store.state.home.homeCount + 'KG'
 			},
-			...mapState(
-				'home', {
-					// 映射 this.count 为 this.$store.state.home.homeCount
-					count: state => state.homeCount,
-					name: state => state.homeName + '真帅啊！'
-				}),
+			...mapGetters({
+				countPower: 'homeCountPower',
+				nameDesc: 'homeNameDesc',
+			}),
+			//如果不更改getters中原有的名字，可以直接传一个数组
 			...mapGetters(
-				'home', {
-					count1: 'homeCount',
-					name1: 'homeName'
-				}
+				['homeInfo', 'editHomeCount']
 			),
+			...mapState({
+				// 映射 this.count 为 this.$store.state.home.homeCount
+				myCount: state => state.home.homeCount,
+				myName: state => state.home.homeName,
+				homeGoodsList: state => state.home.homeGoods
+			}),
+
 			//不使用命名空间的user
 			userAge() {
 				return this.$store.state.user.userAge
@@ -92,44 +111,102 @@
 			}
 		},
 		onLoad() {
-			// 想要获取getters的内容，但是home是使用命名空间来获取的，所以暂时不知道怎么获取
-			// console.log(this.$store.getters)
-			console.log(this.$store.state.home.homeCount)
+			//普通方式获取模块home中的homeName的内容
 			console.log(this.$store.state.home.homeName)
-			console.log(this.$store.state.user.userAge)
-			console.log(this.$store.getters.userName)
-			console.log(this.$store.getters.userAge)
+			// 获取getters的内容
+			console.log(this.$store.getters.homeNameDesc)
+			//error:注意此处不能通过.home.getters，而是直接.getters
+			// console.log(this.$store.home.getters.homeNameDesc)
+			
+
+
+			// console.log(this.$store.state.user.userAge)
+			// console.log(this.$store.getters.userName)
+			// console.log(this.$store.getters.userAge)
 		},
 		methods: {
 			//将this.addAmount(data) 映射为 this.$store.commit(ADD, data)
 			//将this.minAmount(data) 映射为 this.$store.commit(MIN, data)
 			//同理，mapActions也可以如此使用
 			//注： 如果调用名一致，则可以直接使用数组，而不是对象：
-			
+
 			//方式1：直接使用
-			...mapMutations('home',
+			...mapMutations(
 				[ADD, MIN],
 			),
 			//方式2： 重新命名
-			...mapMutations('home', {
+			...mapMutations({
 				addAmount: ADD,
 				minAmount: MIN
 			}),
-
-
+			...mapMutations(
+				['addGoods']
+			),
+			...mapActions({
+				requestData: 'requestListData'
+			}),
+			asyncPromise() {
+				//直接使用方式2进行测试：
+				let goods = {
+					goodsId: 911,
+					goodsName: '酸奶',
+					goodsPrice: 199
+				}
+				this.$store.
+						dispatch('requestPromiseInfo', goods)
+						.then(res => {
+							console.log(res)
+						}) 
+			},
+			asyncCallback() {
+				//直接使用方式2进行测试：
+				let goods = {
+					goodsId: 199,
+					goodsName: '圣女果',
+					goodsPrice: 177
+				}
+				this.$store.dispatch('requestHomeInfo', {
+					data: goods,
+					callback: (res) => {
+						console.log(res)
+					}
+				})
+			},
+			asyncAddMoreGoods() {
+				//方式1：
+				// this.requestData()
+				// 方式2:
+				this.$store.dispatch('requestListData')
+			},
+			addMoreGoods() {
+				let goods = {
+					goodsId: 100,
+					goodsName: '榴莲',
+					goodsPrice: 150
+				}
+				//方式1：
+				// this.addGoods(goods)
+				//方式2：
+				// this.$store.commit('addGoods', goods)
+				//方式3：（需要更改mutations中的取参数的方式）
+				this.$store.commit({
+					type: 'addGoods',
+					data: goods
+				})
+				console.log(this.$store.state.home.homeGoods)
+			},
 			add(data) {
-				
 				//方式1：
 				this.ADD(data)
 				//方式2：
 				// this.addAmount(data)
-				//方式2：
+				//方式3：直接通过commit方式提交
 				// this.$store.commit(ADD, data)
 			},
 			min(data) {
-				// this.$store.commit(MIN, data)
 				this.MIN(data)
 				// this.minAmount(data)
+				// this.$store.commit(MIN, data)
 			},
 			gotoUser() {
 				uni.navigateTo({
@@ -139,7 +216,7 @@
 					complete: () => {}
 				});
 			},
-			
+
 			...mapMutations({
 				setUserAge: USER_AGE,
 				setUserName: USER_NAME
@@ -175,12 +252,13 @@
 		display: flex;
 		justify-content: center;
 	}
+
 	.text-area-user {
 		display: flex;
 		justify-content: center;
 		background-color: #F0AD4E;
 	}
-	
+
 
 	.title {
 		font-size: 36rpx;
